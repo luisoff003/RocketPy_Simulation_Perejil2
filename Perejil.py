@@ -9,7 +9,7 @@ class LaunchPlace:
 
 #Setting up the simulation
 Env = Environment(
-    railLength=5.2, 
+    railLength=2.0, 
     latitude = LaunchPlace.Latitude,
     longitude = LaunchPlace.Longitude, 
     elevation= LaunchPlace.Elevation
@@ -29,20 +29,73 @@ Env.setAtmosphericModel(type="Forecast", file="GFS")
 
 Env.info()      #To see what the weather will look like.
 
+help(Rocket)
 
 ### CREATE THE MOTOR PEREJIL 2
-Perejil2 = SolidMotor(
-    thrustSource=250,  #".csv",        #CSV file must not contain headers/Column1=sec/Column2=T[N]
-    burnOut=3.9,
+PRJL2 = SolidMotor(
+    thrustSource="Perejil_2_Thrust-Time.csv",        #CSV file must not contain headers/Column1=sec/Column2=T[N]
+    burnOut=3.41,        #Time s
     grainNumber=5,
     grainSeparation=5/1000,
     grainDensity=1815,
-    grainOuterRadius=33/1000,
-    grainInitialInnerRadius=15 / 1000,
-    grainInitialHeight=120 / 1000,
-    nozzleRadius=33 / 1000,
-    throatRadius=11 / 1000,
+    grainOuterRadius=59/1000,
+    grainInitialInnerRadius=29/ 1000,
+    grainInitialHeight=60/1000,
+    nozzleRadius=40/1000,
+    throatRadius=16/1000,
     interpolationMethod="linear",
 )
 
-Perejil2.info()
+# PRJL2.info()
+
+###     CREATE THE ROCKET
+Perejil2 = Rocket(
+    motor=PRJL2,
+    radius= 85.8/2000,
+    mass = 5.222, #Without propellant in kg  PRJIL=1511g+1680g
+    inertiaI=6.60,
+    inertiaZ=0.03,
+    distanceRocketNozzle=-1.255,
+    distanceRocketPropellant=-0.85704,
+    powerOffDrag=0.2,
+    powerOnDrag=0.2,
+) 
+
+Perejil2.setRailButtons([0.2, -0.5])
+
+NoseCone = Perejil2.addNose(length=0.55829, kind="ogive", distanceToCM=0.71971)
+
+FinSet = Perejil2.addTrapezoidalFins(
+    n=4,
+    rootChord=0.120,
+    tipChord=0.040,
+    span=0.100,
+    distanceToCM=-1.04956,
+    cantAngle=0,
+    radius=None,
+    airfoil=None,
+)
+
+Tail = Perejil2.addTail(
+    topRadius=0.0635, bottomRadius=0.0435, length=0.060, distanceToCM=-1.194656
+)
+
+def mainTrigger(p, y):
+    # p = pressure
+    # y = [x, y, z, vx, vy, vz, e0, e1, e2, e3, w1, w2, w3]
+    # activate main when vz < 0 m/s and z < 800 + 1400 m (+1400 due to surface elevation).
+    return True if y[5] < 0 else False
+
+
+Main = Perejil2.addParachute(
+    "Main",
+    CdS=10.0,
+    trigger=mainTrigger,
+    samplingRate=105,
+    lag=1.5,
+    noise=(0, 8.3, 0.5),
+)
+
+TestFlight = Flight(rocket=Perejil2, environment=Env, inclination=85, heading=0)
+
+TestFlight.allInfo()
